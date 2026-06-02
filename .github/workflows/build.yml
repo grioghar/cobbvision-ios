@@ -1,0 +1,55 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & lint (Swift)
+    runs-on: macos-latest     # arm64 M-series runner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+
+      # ── Generate Xcode project from project.yml ───────────────────────────
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate .xcodeproj
+        run: xcodegen generate
+
+      # ── Build for simulator (no signing required) ─────────────────────────
+      - name: Build (iPhone simulator)
+        run: |
+          xcodebuild build \
+            -project CobbVisionCompanion.xcodeproj \
+            -scheme  CobbVisionCompanion \
+            -sdk     iphonesimulator \
+            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty || xcodebuild build \
+              -project CobbVisionCompanion.xcodeproj \
+              -scheme  CobbVisionCompanion \
+              -sdk     iphonesimulator \
+              -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+              CODE_SIGNING_ALLOWED=NO
+
+      # ── Swift lint (non-blocking — reports but does not fail the build) ───
+      - name: SwiftLint
+        continue-on-error: true
+        run: |
+          if command -v swiftlint &>/dev/null; then
+            swiftlint lint --reporter github-actions-logging
+          else
+            echo "swiftlint not installed — skipping"
+          fi
