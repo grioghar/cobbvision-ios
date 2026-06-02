@@ -1,0 +1,21 @@
+# Xcode
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+
+# XcodeGen output — regenerate with `xcodegen generate`
+CobbVisionCompanion.xcodeproj/
+
+# CocoaPods / SPM
+Pods/
+.build/
+.swiftpm/
+
+# OS
+.DS_Store
