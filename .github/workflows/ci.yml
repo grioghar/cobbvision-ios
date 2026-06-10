@@ -10,7 +10,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  XCODE_VERSION: "16.2"
+  # 16.3+ required: HaishinKit's Logboard dependency uses Swift 6.1
+  # trailing-comma syntax in its manifest.
+  XCODE_VERSION: "16.4"
 
 jobs:
   test:
