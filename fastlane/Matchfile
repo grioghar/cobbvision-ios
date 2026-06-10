@@ -1,0 +1,6 @@
+# Certificates/profiles live in a private repo; match creates and renews them
+# on the CI runner via the App Store Connect API key — no local Mac required.
+git_url("https://github.com/grioghar/cobbvision-certs.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["co.grio.cobbvision", "co.grio.cobbvision.watchkitapp"])

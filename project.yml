@@ -1,0 +1,128 @@
+name: CobbVision
+options:
+  bundleIdPrefix: co.grio
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    GENERATE_INFOPLIST_FILE: NO
+
+packages:
+  CobbVisionKit:
+    path: Packages/CobbVisionKit
+  # HaishinKit is declared inside CobbVisionKit/Package.swift (CVStreaming product).
+
+targets:
+  CobbVision:
+    type: application
+    platform: iOS
+    sources:
+      - App
+    dependencies:
+      - package: CobbVisionKit
+        products:
+          - CVCore
+          - CVAPI
+          - CVTelemetry
+          - CVCapture
+          - CVStreaming
+          - CVExternalCam
+          - CVSession
+          - CVWatchBridge
+      - target: CobbVisionWatch
+    info:
+      path: App/Support/Info.plist
+      properties:
+        CFBundleDisplayName: CobbVision
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSupportsMultipleScenes: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
+        UIBackgroundModes:
+          - location
+          - audio
+          - bluetooth-central
+        NSCameraUsageDescription: CobbVision records and streams video from your iPhone cameras during driving sessions.
+        NSMicrophoneUsageDescription: CobbVision records audio with your session videos.
+        NSLocationWhenInUseUsageDescription: CobbVision logs your GPS track during driving sessions and correlates it with your AccessPort datalogs.
+        NSLocationAlwaysAndWhenInUseUsageDescription: CobbVision keeps logging your GPS track while the app is in the background during an active session.
+        NSMotionUsageDescription: CobbVision uses the accelerometer to display and log g-forces during driving sessions.
+        NSBluetoothAlwaysUsageDescription: CobbVision connects to GoPro and other action cameras over Bluetooth to control recording.
+        NSLocalNetworkUsageDescription: CobbVision talks to action cameras and your streaming server on the local network.
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: App/Support/CobbVision.entitlements
+      properties:
+        com.apple.developer.networking.HotspotConfiguration: true
+        # After Apple grants the CarPlay driving-task entitlement (see
+        # docs/apple-setup-checklist.md), add:
+        #   com.apple.developer.carplay-driving-task: true
+        # and rerun `fastlane match` with force: true to regenerate profiles.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.grio.cobbvision
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+
+  CobbVisionWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - WatchApp
+    dependencies:
+      - package: CobbVisionKit
+        products:
+          - CVCore
+          - CVWatchBridge
+    info:
+      path: WatchApp/Support/Info.plist
+      properties:
+        CFBundleDisplayName: CobbVision
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: co.grio.cobbvision
+        WKRunsIndependentlyOfCompanionApp: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.grio.cobbvision.watchkitapp
+        SDKROOT: watchos
+
+schemes:
+  CobbVision:
+    build:
+      targets:
+        CobbVision: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets: []
+    archive:
+      config: Release
+  CobbVisionWatch:
+    build:
+      targets:
+        CobbVisionWatch: all
+    run:
+      config: Debug

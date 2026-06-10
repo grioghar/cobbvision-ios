@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_VERSION: "16.2"
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache SPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            Packages/CobbVisionKit/.build
+          key: spm-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('Packages/CobbVisionKit/Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Package unit tests (macOS host)
+        run: swift test --package-path Packages/CobbVisionKit
+
+      - name: Build iOS app (simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project CobbVision.xcodeproj \
+            -scheme CobbVision \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify
+
+      - name: Build watch app (simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project CobbVision.xcodeproj \
+            -scheme CobbVisionWatch \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify

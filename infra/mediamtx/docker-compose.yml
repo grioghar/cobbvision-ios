@@ -1,0 +1,18 @@
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1.11.3
+    container_name: cobbvision-mediamtx
+    restart: unless-stopped
+    ports:
+      - "1935:1935"        # RTMP ingest (from the app)
+      - "8890:8890/udp"    # SRT ingest (preferred over LTE)
+      - "8888:8888"        # HLS playback (browser)
+      - "8889:8889"        # WebRTC playback (browser, sub-second)
+      - "8189:8189/udp"    # WebRTC ICE
+    environment:
+      # Override the publish password without editing mediamtx.yml:
+      #   MTX_PUBLISH_PASS=supersecret docker compose up -d
+      MTX_PATHS_COBBVISION_PUBLISHPASS: ${MTX_PUBLISH_PASS:-changeme}
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+      - ./recordings:/recordings
