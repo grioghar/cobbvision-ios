@@ -1,0 +1,35 @@
+# MediaMTX configuration for CobbVision live streaming.
+# Docs: https://github.com/bluenviron/mediamtx
+
+logLevel: info
+
+# Ingest
+rtmp: yes
+rtmpAddress: :1935
+srt: yes
+srtAddress: :8890
+
+# Playback
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+webrtc: yes
+webrtcAddress: :8889
+
+# Disable protocols we don't use
+rtsp: no
+
+paths:
+  cobbvision:
+    # The app publishes to:
+    #   RTMP: rtmp://<host>:1935/cobbvision?user=cobb&pass=<password>
+    #   SRT:  srt://<host>:8890?streamid=publish:cobbvision:cobb:<password>
+    # Viewers:
+    #   HLS:    http://<host>:8888/cobbvision/
+    #   WebRTC: http://<host>:8889/cobbvision/
+    publishUser: cobb
+    publishPass: changeme
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4
+    recordDeleteAfter: 168h

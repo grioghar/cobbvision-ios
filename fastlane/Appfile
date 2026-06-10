@@ -1,0 +1,2 @@
+app_identifier("co.grio.cobbvision")
+apple_dev_portal_id(ENV["ASC_ISSUER_ID"]) if ENV["ASC_ISSUER_ID"]

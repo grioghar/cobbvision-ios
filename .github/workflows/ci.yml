@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # HaishinKit 2.2.x needs the iOS 26 SDK (VideoToolbox VBR constants).
+  # 26.3 is the image default, so its simulator runtimes are preinstalled.
+  XCODE_VERSION: "26.3"
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+
+      - name: Ensure watchOS simulator runtime
+        run: |
+          xcrun simctl list runtimes
+          xcodebuild -downloadPlatform watchOS -quiet || true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache SPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            Packages/CobbVisionKit/.build
+          key: spm-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('Packages/CobbVisionKit/Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Package unit tests (macOS host)
+        run: swift test --package-path Packages/CobbVisionKit
+
+      - name: Build iOS app (simulator)
+        run: |
+          set -o pipefail
+          # arm64-only: SRTHaishinKit's libsrt xcframework ships no x86_64
+          # simulator slice, and the runners are Apple Silicon anyway.
+          xcodebuild build \
+            -project CobbVision.xcodeproj \
+            -scheme CobbVision \
+            -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify
+
+      - name: Build watch app (simulator)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project CobbVision.xcodeproj \
+            -scheme CobbVisionWatch \
+            -destination 'generic/platform=watchOS Simulator' \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify

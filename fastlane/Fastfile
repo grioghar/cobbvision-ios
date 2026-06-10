@@ -1,0 +1,68 @@
+default_platform(:ios)
+
+APP_ID = "co.grio.cobbvision"
+WATCH_APP_ID = "co.grio.cobbvision.watchkitapp"
+
+platform :ios do
+  desc "Build, sign, and upload to TestFlight. Runs on CI only."
+  lane :beta do
+    setup_ci # ephemeral keychain on the runner (uses KEYCHAIN_PASSWORD)
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_KEY_P8_BASE64"),
+      is_key_content_base64: true
+    )
+
+    # First-ever run: dispatch the workflow with readonly_match=false so match
+    # mints certificates and profiles via the ASC API. After the CarPlay
+    # entitlement is granted, run once with MATCH_FORCE=true to regenerate.
+    match(
+      type: "appstore",
+      readonly: ENV.fetch("MATCH_READONLY", "true") == "true",
+      force: ENV.fetch("MATCH_FORCE", "false") == "true",
+      api_key: api_key
+    )
+
+    app_profile = ENV.fetch("sigh_#{APP_ID}_appstore_profile-name")
+    watch_profile = ENV.fetch("sigh_#{WATCH_APP_ID}_appstore_profile-name")
+    team_id = ENV.fetch("sigh_#{APP_ID}_appstore_team-id")
+
+    update_code_signing_settings(
+      path: "CobbVision.xcodeproj",
+      targets: ["CobbVision"],
+      use_automatic_signing: false,
+      team_id: team_id,
+      code_sign_identity: "Apple Distribution",
+      profile_name: app_profile
+    )
+    update_code_signing_settings(
+      path: "CobbVision.xcodeproj",
+      targets: ["CobbVisionWatch"],
+      use_automatic_signing: false,
+      team_id: team_id,
+      code_sign_identity: "Apple Distribution",
+      profile_name: watch_profile
+    )
+
+    build_app(
+      project: "CobbVision.xcodeproj",
+      scheme: "CobbVision",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          APP_ID => app_profile,
+          WATCH_APP_ID => watch_profile
+        }
+      },
+      xcargs: "CURRENT_PROJECT_VERSION=#{ENV.fetch('BUILD_NUMBER', '1')}"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
