@@ -38,9 +38,9 @@ final class SessionStore: ObservableObject {
             persist()
         }
 
-        if let analysisURL = result.analysisURL {
-            print("[SessionStore] Uploaded session \(result.sessionId) — analysis: \(analysisURL)")
-        }
+        let matched = result.tripId.map { "trip \($0)" } ?? "no trip match yet"
+        print("[SessionStore] Uploaded GPS track \(result.gpsTrackId) "
+              + "(\(result.pointCount ?? 0) pts) — \(matched)")
     }
 
     // MARK: - Persistence
