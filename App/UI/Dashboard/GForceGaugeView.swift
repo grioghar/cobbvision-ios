@@ -28,7 +28,7 @@ struct GForceGaugeView: View {
                     lineWidth: 1
                 )
                 context.draw(
-                    Text(String(format: "%.1f", ring)).font(.system(size: 9)).foregroundStyle(.gray),
+                    Text(String(format: "%.1f", ring)).font(.system(size: 9)).foregroundColor(.gray),
                     at: CGPoint(x: center.x + r + 2, y: center.y - 6),
                     anchor: .topLeading
                 )
@@ -73,7 +73,7 @@ struct GForceGaugeView: View {
             context.draw(
                 Text(String(format: "lat %+.2f   lon %+.2f", current.lat, current.lon))
                     .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(.primary),
+                    .foregroundColor(.primary),
                 at: CGPoint(x: center.x, y: size.height - 8),
                 anchor: .bottom
             )
