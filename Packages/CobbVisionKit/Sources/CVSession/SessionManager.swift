@@ -214,10 +214,12 @@ public actor SessionManager {
         let directory = sessionDirectory
 
         // Streaming down first so viewers get a clean end.
-        #if canImport(CoreMedia)
-        await capture.detachStreamTap()
-        #endif
-        await stream?.disconnect()
+        if preset?.mode.contains(.stream) == true {
+            #if canImport(CoreMedia)
+            await capture.detachStreamTap()
+            #endif
+            await stream?.disconnect()
+        }
 
         var videos: [RecordedVideo] = []
         if preset?.mode.contains(.record) == true {
@@ -284,10 +286,12 @@ public actor SessionManager {
 
     private func teardownAfterFailure() async {
         cancelPumps()
-        #if canImport(CoreMedia)
-        await capture.detachStreamTap()
-        #endif
-        await stream?.disconnect()
+        if activePreset?.mode.contains(.stream) == true {
+            #if canImport(CoreMedia)
+            await capture.detachStreamTap()
+            #endif
+            await stream?.disconnect()
+        }
         _ = try? await capture.stopRecording()
         await capture.stop()
         _ = try? await telemetry?.stop()
