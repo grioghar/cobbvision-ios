@@ -46,6 +46,7 @@ let package = Package(
         ),
         .target(name: "CVWatchBridge", dependencies: ["CVCore"]),
         .testTarget(name: "CVCoreTests", dependencies: ["CVCore"]),
+        .testTarget(name: "CVTelemetryTests", dependencies: ["CVTelemetry"]),
         .testTarget(name: "CVAPITests", dependencies: ["CVAPI"]),
         .testTarget(name: "CVSessionTests", dependencies: ["CVSession"]),
         .testTarget(name: "CVExternalCamTests", dependencies: ["CVExternalCam"]),
