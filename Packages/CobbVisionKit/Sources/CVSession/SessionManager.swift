@@ -239,7 +239,7 @@ public actor SessionManager {
                 presetName: preset.name,
                 startedAt: activeInfo?.startedAt ?? Date(),
                 endedAt: Date(),
-                telemetryFileName: telemetryOutput??.telemetryFileURL != nil ? TelemetryRecorder.telemetryFileName : nil,
+                telemetryFileName: telemetryOutput?.telemetryFileURL != nil ? TelemetryRecorder.telemetryFileName : nil,
                 videos: videos.map {
                     SessionManifest.VideoArtifact(
                         fileName: $0.fileName,
@@ -247,10 +247,10 @@ public actor SessionManager {
                         durationSeconds: $0.durationSeconds
                     )
                 },
-                peakG: telemetryOutput??.peaks ?? GPeaks(),
+                peakG: telemetryOutput?.peaks ?? GPeaks(),
                 vehicleID: vehicleID
             )
-            if let gpx = telemetryOutput??.gpx {
+            if let gpx = telemetryOutput?.gpx {
                 try? Data(gpx.utf8).write(to: directory.appendingPathComponent("track.gpx"), options: .atomic)
             } else {
                 manifest.gpxUploaded = true // nothing to upload
