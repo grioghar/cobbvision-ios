@@ -66,6 +66,35 @@ public struct LoginResponse: Codable, Sendable {
     }
 }
 
+/// `POST /api/v1/upload` reply — the analysis runs synchronously server-side.
+public struct DatalogUploadResponse: Codable, Sendable {
+    public var sessionID: String
+    public var status: String
+    public var healthScore: Double?
+    public var rowCount: Int?
+    public var anomalyCount: Int?
+    public var analysisURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionID = "session_id"
+        case status
+        case healthScore = "health_score"
+        case rowCount = "row_count"
+        case anomalyCount = "anomaly_count"
+        case analysisURL = "analysis_url"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionID = try c.decode(String.self, forKey: .sessionID)
+        status = try c.decode(String.self, forKey: .status)
+        healthScore = try? c.decodeFlexibleDouble(forKey: .healthScore)
+        rowCount = try? c.decodeFlexibleInt(forKey: .rowCount)
+        anomalyCount = try? c.decodeFlexibleInt(forKey: .anomalyCount)
+        analysisURL = try c.decodeIfPresent(String.self, forKey: .analysisURL)
+    }
+}
+
 public struct GPSTrackUploadResponse: Codable, Sendable {
     public var id: String
     public var pointCount: Int?
@@ -166,6 +195,15 @@ extension KeyedDecodingContainer {
         throw DecodingError.typeMismatch(
             Int.self,
             .init(codingPath: codingPath + [key], debugDescription: "not a flexible int")
+        )
+    }
+
+    func decodeFlexibleDouble(forKey key: Key) throws -> Double {
+        if let d = try? decode(Double.self, forKey: key) { return d }
+        if let s = try? decode(String.self, forKey: key), let d = Double(s) { return d }
+        throw DecodingError.typeMismatch(
+            Double.self,
+            .init(codingPath: codingPath + [key], debugDescription: "not a flexible double")
         )
     }
 }

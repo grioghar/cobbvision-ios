@@ -7,7 +7,7 @@ struct CobbVisionApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(appDelegate.environment)
+                .environmentObject(appDelegate.environment)
                 .preferredColorScheme(.dark)
         }
     }

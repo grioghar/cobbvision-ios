@@ -3,7 +3,7 @@ import CVCore
 import CVExternalCam
 
 struct ExternalCamerasView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var statuses: [ExternalCamStatus] = []
     @State private var discovered: [GoProScanner.Discovered] = []
     @State private var scanning = false

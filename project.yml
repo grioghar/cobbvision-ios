@@ -1,9 +1,12 @@
 name: CobbVision
 options:
   bundleIdPrefix: co.grio
+  # iOS 16 is the honest floor: it unlocks iPhone 8/X-era hardware, while
+  # iOS 15 would only add 2015–16 phones that can't sustain capture+encode
+  # and would cost NavigationStack everywhere (HaishinKit won't go below 15).
   deploymentTarget:
-    iOS: "17.0"
-    watchOS: "10.0"
+    iOS: "16.0"
+    watchOS: "9.0"
   createIntermediateGroups: true
   groupSortPosition: top
 

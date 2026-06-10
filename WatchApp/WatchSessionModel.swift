@@ -5,17 +5,16 @@ import CVCore
 import CVWatchBridge
 
 /// View model for the watch UI: mirrors phone session state, relays commands,
-/// and fires haptics on acks.
-@Observable
+/// and fires haptics on acks. ObservableObject keeps the floor at watchOS 9.
 @MainActor
-final class WatchSessionModel {
+final class WatchSessionModel: ObservableObject {
     private let bridge = WatchPhoneBridge()
     private var started = false
 
-    var snapshot = WatchStateSnapshot(phase: .idle)
-    var liveG = WatchTelemetryTick(gLateral: 0, gLongitudinal: 0, speedMps: nil)
+    @Published var snapshot = WatchStateSnapshot(phase: .idle)
+    @Published var liveG = WatchTelemetryTick(gLateral: 0, gLongitudinal: 0, speedMps: nil)
     /// True between sending a command and receiving the ack/denial.
-    var commandInFlight = false
+    @Published var commandInFlight = false
 
     func activate() {
         guard !started else { return }

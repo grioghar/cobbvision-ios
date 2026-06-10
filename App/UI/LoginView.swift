@@ -2,7 +2,7 @@ import SwiftUI
 import CVAPI
 
 struct LoginView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var email = ""
     @State private var password = ""
     @State private var busy = false

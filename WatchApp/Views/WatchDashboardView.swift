@@ -2,7 +2,7 @@ import SwiftUI
 import CVCore
 
 struct WatchDashboardView: View {
-    @Environment(WatchSessionModel.self) private var model
+    @EnvironmentObject private var model: WatchSessionModel
 
     var body: some View {
         NavigationStack {

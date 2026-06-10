@@ -10,7 +10,8 @@ import CVExternalCam
 /// phone UI, the watch bridge, and CarPlay via `stateUpdates()`.
 ///
 /// `start(preset:)` sequence — each step surfaces as `.preparing(step:)`:
-///   1. telemetry up first (GPS warm-up costs the most wall-clock)
+///   1. telemetry up first (GPS warm-up costs the most wall-clock; background
+///      fixes ride on `allowsBackgroundLocationUpdates` + the location mode)
 ///   2. external cameras broadcast-start (concurrent with 3–4, never blocking)
 ///   3. capture configure + start (+ local recording)
 ///   4. stream connect + tap attach (when the preset streams)

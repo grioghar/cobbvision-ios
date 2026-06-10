@@ -2,7 +2,7 @@ import SwiftUI
 import CVCore
 
 struct StreamDestinationsView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var destinations: [StreamDestination] = []
     @State private var editing: StreamDestination?
     @State private var isNew = false
@@ -61,7 +61,7 @@ struct StreamDestinationsView: View {
 }
 
 private struct DestinationEditorView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
 
     @State var destination: StreamDestination

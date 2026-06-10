@@ -2,7 +2,7 @@ import SwiftUI
 import CVCore
 
 struct ActiveSessionView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     let info: ActiveSessionInfo
 
     var body: some View {
@@ -39,7 +39,6 @@ struct ActiveSessionView: View {
             if info.recording {
                 Label("REC", systemImage: "record.circle.fill")
                     .foregroundStyle(.red)
-                    .symbolEffect(.pulse)
             }
             if info.streaming.isLive {
                 Label("LIVE", systemImage: "dot.radiowaves.left.and.right")

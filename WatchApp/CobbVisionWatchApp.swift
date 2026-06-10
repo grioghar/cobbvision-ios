@@ -2,12 +2,12 @@ import SwiftUI
 
 @main
 struct CobbVisionWatchApp: App {
-    @State private var model = WatchSessionModel()
+    @StateObject private var model = WatchSessionModel()
 
     var body: some Scene {
         WindowGroup {
             WatchDashboardView()
-                .environment(model)
+                .environmentObject(model)
                 .onAppear { model.activate() }
         }
     }

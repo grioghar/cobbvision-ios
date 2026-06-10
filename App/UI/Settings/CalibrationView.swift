@@ -6,7 +6,7 @@ import CVTelemetry
 ///  1. capture gravity while the car sits still (defines "up")
 ///  2. capture a short straight-line acceleration (defines "forward")
 struct CalibrationView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
 
     private enum Step {

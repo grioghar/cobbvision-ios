@@ -10,10 +10,10 @@ import CVSession
 import CVWatchBridge
 
 /// Composition root. Built once by `AppDelegate`; shared by the phone UI, the
-/// CarPlay scene, and the watch bridge.
-@Observable
+/// CarPlay scene, and the watch bridge. ObservableObject (not @Observable)
+/// keeps the deployment floor at iOS 16.
 @MainActor
-final class AppEnvironment {
+final class AppEnvironment: ObservableObject {
     // MARK: - Services
 
     let api: APIClient
@@ -33,13 +33,13 @@ final class AppEnvironment {
 
     // MARK: - UI state (mirrors of actor state for SwiftUI)
 
-    private(set) var isLoggedIn = false
-    private(set) var user: User?
-    private(set) var vehicles: [Vehicle] = []
-    private(set) var presets: [Preset] = []
-    private(set) var sessionState: SessionState = .idle
-    private(set) var uploadProgress: PostSessionUploader.UploadProgress?
-    var selectedVehicleID: String? {
+    @Published private(set) var isLoggedIn = false
+    @Published private(set) var user: User?
+    @Published private(set) var vehicles: [Vehicle] = []
+    @Published private(set) var presets: [Preset] = []
+    @Published private(set) var sessionState: SessionState = .idle
+    @Published private(set) var uploadProgress: PostSessionUploader.UploadProgress?
+    @Published var selectedVehicleID: String? {
         didSet {
             UserDefaults.standard.set(selectedVehicleID, forKey: "selectedVehicleID")
             Task { await sessionManager.setVehicleID(selectedVehicleID) }

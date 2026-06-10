@@ -3,7 +3,7 @@ import CVCore
 import CVSession
 
 struct DashboardView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var selectedPresetID: UUID?
 
     var body: some View {
@@ -33,7 +33,7 @@ struct DashboardView: View {
             }
             .navigationTitle("CobbVision")
             .onAppear { keepScreenAwakeIfActive() }
-            .onChange(of: env.sessionState.isActive) { _, _ in keepScreenAwakeIfActive() }
+            .onChange(of: env.sessionState.isActive) { _ in keepScreenAwakeIfActive() }
         }
     }
 

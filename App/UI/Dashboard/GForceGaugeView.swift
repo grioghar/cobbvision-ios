@@ -5,7 +5,7 @@ import CVCore
 /// Polls `SessionManager.currentG()` at ~30 Hz while visible (the recorder
 /// updates its `latestG` from 50 Hz device motion).
 struct GForceGaugeView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var current: (lat: Double, lon: Double) = (0, 0)
     @State private var trail: [CGPoint] = []
     @State private var pollTask: Task<Void, Never>?

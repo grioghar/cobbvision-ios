@@ -2,43 +2,79 @@
 import Foundation
 import CoreLocation
 
-/// GPS via the iOS 17 `CLLocationUpdate.liveUpdates` async API. While a
-/// session is active a `CLBackgroundActivitySession` keeps updates flowing
-/// with the app backgrounded (shows the system location indicator).
-public final class CoreLocationSource: LocationSource {
-    public init() {}
+/// GPS via a CLLocationManager delegate bridged to an AsyncThrowingStream
+/// (iOS 16-compatible — `CLLocationUpdate.liveUpdates` needs 17).
+/// `allowsBackgroundLocationUpdates` + the `location` background mode keep
+/// fixes flowing while the app is backgrounded, with the system indicator on.
+public final class CoreLocationSource: NSObject, LocationSource, CLLocationManagerDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private var manager: CLLocationManager?
+    private var continuation: AsyncThrowingStream<LocationFix, Error>.Continuation?
+
+    public override init() {
+        super.init()
+    }
 
     public func updates() -> AsyncThrowingStream<LocationFix, Error> {
         AsyncThrowingStream { continuation in
-            let backgroundSession = CLBackgroundActivitySession()
-            let task = Task {
-                do {
-                    for try await update in CLLocationUpdate.liveUpdates(.automotiveNavigation) {
-                        guard let location = update.location else { continue }
-                        continuation.yield(LocationFix(
-                            timestamp: location.timestamp,
-                            latitude: location.coordinate.latitude,
-                            longitude: location.coordinate.longitude,
-                            altitudeM: location.verticalAccuracy > 0 ? location.altitude : nil,
-                            speedMps: location.speed >= 0 ? location.speed : nil,
-                            horizontalAccuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil
-                        ))
+            lock.withLock { self.continuation = continuation }
+            // CLLocationManager wants a run-loop thread; main is the safe one.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let manager = CLLocationManager()
+                manager.delegate = self
+                manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+                manager.activityType = .automotiveNavigation
+                manager.distanceFilter = kCLDistanceFilterNone
+                manager.pausesLocationUpdatesAutomatically = false
+                if Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") != nil {
+                    manager.allowsBackgroundLocationUpdates = true
+                    manager.showsBackgroundLocationIndicator = true
+                }
+                self.lock.withLock { self.manager = manager }
+                manager.startUpdatingLocation()
+            }
+            continuation.onTermination = { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    let manager = self.lock.withLock { () -> CLLocationManager? in
+                        let m = self.manager
+                        self.manager = nil
+                        self.continuation = nil
+                        return m
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
+                    manager?.stopUpdatingLocation()
+                    manager?.delegate = nil
                 }
             }
-            continuation.onTermination = { _ in
-                task.cancel()
-                backgroundSession.invalidate()
-            }
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let continuation = lock.withLock { self.continuation }
+        for location in locations {
+            continuation?.yield(LocationFix(
+                timestamp: location.timestamp,
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                altitudeM: location.verticalAccuracy > 0 ? location.altitude : nil,
+                speedMps: location.speed >= 0 ? location.speed : nil,
+                horizontalAccuracyM: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil
+            ))
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // kCLErrorDenied is fatal; transient errors (no fix yet) are not.
+        if let clError = error as? CLError, clError.code == .denied {
+            let continuation = lock.withLock { self.continuation }
+            continuation?.finish(throwing: error)
         }
     }
 }
 
-/// Requests when-in-use authorization up front (the background activity
-/// session covers backgrounded sessions without "Always").
+/// Requests when-in-use authorization up front (background updates ride on
+/// the `location` background mode plus `allowsBackgroundLocationUpdates`).
 @MainActor
 public final class LocationPermission: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()

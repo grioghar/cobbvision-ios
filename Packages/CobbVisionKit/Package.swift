@@ -9,8 +9,8 @@ import PackageDescription
 let package = Package(
     name: "CobbVisionKit",
     platforms: [
-        .iOS(.v17),
-        .watchOS(.v10),
+        .iOS(.v16),
+        .watchOS(.v9),
         .macOS(.v14),
     ],
     products: [

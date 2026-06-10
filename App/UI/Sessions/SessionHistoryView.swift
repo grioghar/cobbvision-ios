@@ -3,8 +3,9 @@ import CVCore
 import CVSession
 
 struct SessionHistoryView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var manifests: [SessionManifest] = []
+    @State private var showImport = false
 
     var body: some View {
         NavigationStack {
@@ -30,19 +31,31 @@ struct SessionHistoryView: View {
                 }
             }
             .navigationTitle("Sessions")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showImport = true
+                    } label: {
+                        Label("Import datalogs", systemImage: "square.and.arrow.down")
+                    }
+                }
+            }
+            .sheet(isPresented: $showImport) {
+                DatalogImportView()
+            }
             .refreshable {
                 await env.uploader.processPending()
                 reload()
             }
             .onAppear { reload() }
-            .onChange(of: env.sessionState.isActive) { _, _ in reload() }
-            .onChange(of: env.uploadProgress) { _, _ in reload() }
+            .onChange(of: env.sessionState.isActive) { _ in reload() }
+            .onChange(of: env.uploadProgress) { _ in reload() }
             .overlay {
                 if manifests.isEmpty {
-                    ContentUnavailableView(
-                        "No sessions yet",
+                    EmptyStateView(
+                        title: "No sessions yet",
                         systemImage: "clock.arrow.circlepath",
-                        description: Text("Recorded sessions appear here and upload to CobbVision automatically.")
+                        description: "Recorded sessions appear here and upload to CobbVision automatically."
                     )
                 }
             }

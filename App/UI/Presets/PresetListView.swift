@@ -2,7 +2,7 @@ import SwiftUI
 import CVCore
 
 struct PresetListView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @State private var editing: Preset?
     @State private var isNew = false
 
@@ -34,8 +34,8 @@ struct PresetListView: View {
             }
             .navigationTitle("Presets")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { EditButton() }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) { EditButton() }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         isNew = true
                         editing = Preset(name: "New preset")
@@ -57,10 +57,10 @@ struct PresetListView: View {
             }
             .overlay {
                 if env.presets.isEmpty {
-                    ContentUnavailableView(
-                        "No presets",
+                    EmptyStateView(
+                        title: "No presets",
                         systemImage: "slider.horizontal.3",
-                        description: Text("Tap + to create one. Presets sync to your CobbVision account.")
+                        description: "Tap + to create one. Presets sync to your CobbVision account."
                     )
                 }
             }
@@ -69,7 +69,7 @@ struct PresetListView: View {
 }
 
 struct PresetEditorView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
 
     @State var preset: Preset

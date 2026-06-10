@@ -2,10 +2,9 @@ import SwiftUI
 import CVCore
 
 struct SettingsView: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
 
     var body: some View {
-        @Bindable var env = env
         NavigationStack {
             Form {
                 Section {

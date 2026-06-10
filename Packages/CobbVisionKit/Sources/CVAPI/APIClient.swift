@@ -83,6 +83,27 @@ public actor APIClient {
         return try decode(PresetListResponse.self, from: data).presets
     }
 
+    // MARK: - Datalogs
+
+    /// Uploads a plain-CSV AccessPort datalog for synchronous analysis.
+    /// Callers gunzip `.csv.gz` first (`Gzip.decompress`) — the endpoint
+    /// rejects anything but .csv/.txt. 402 means no analyses remaining.
+    @discardableResult
+    public func uploadDatalog(
+        csv: Data,
+        fileName: String,
+        vehicleID: String?
+    ) async throws -> DatalogUploadResponse {
+        var form = MultipartForm()
+        form.addFile(name: "file", fileName: fileName, mimeType: "text/csv", data: csv)
+        if let vehicleID { form.addField(name: "vehicle_id", value: vehicleID) }
+        let data = try await requestData(
+            method: "POST", path: "/api/v1/upload",
+            body: form.finalized(), contentType: form.contentType
+        )
+        return try decode(DatalogUploadResponse.self, from: data)
+    }
+
     // MARK: - GPS tracks
 
     @discardableResult

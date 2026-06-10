@@ -6,7 +6,7 @@ import CVCore
 /// picture-in-picture for dual sessions. The simulator (FakeCaptureEngine)
 /// shows a placeholder.
 struct CameraPreviewStack: View {
-    @Environment(AppEnvironment.self) private var env
+    @EnvironmentObject private var env: AppEnvironment
 
     var body: some View {
         if let engine = env.multiCamEngine {
