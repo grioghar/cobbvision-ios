@@ -53,10 +53,13 @@ jobs:
       - name: Build iOS app (simulator)
         run: |
           set -o pipefail
+          # arm64-only: SRTHaishinKit's libsrt xcframework ships no x86_64
+          # simulator slice, and the runners are Apple Silicon anyway.
           xcodebuild build \
             -project CobbVision.xcodeproj \
             -scheme CobbVision \
             -destination 'generic/platform=iOS Simulator' \
+            ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify
 
       - name: Build watch app (simulator)
@@ -66,4 +69,5 @@ jobs:
             -project CobbVision.xcodeproj \
             -scheme CobbVisionWatch \
             -destination 'generic/platform=watchOS Simulator' \
+            ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO 2>&1 | xcbeautify
