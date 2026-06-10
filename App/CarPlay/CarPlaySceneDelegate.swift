@@ -3,6 +3,7 @@ import UIKit
 
 /// Entry point for the CarPlay scene (Driving Task entitlement — template UI
 /// only, no video). All logic lives in `CarPlayCoordinator`.
+@MainActor
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var coordinator: CarPlayCoordinator?
 

@@ -8,7 +8,7 @@ struct SettingsView: View {
         @Bindable var env = env
         NavigationStack {
             Form {
-                Section("Account") {
+                Section {
                     LabeledContent("Signed in as", value: env.user?.email ?? "—")
                     Picker("Vehicle", selection: $env.selectedVehicleID) {
                         Text("None").tag(Optional<String>.none)
@@ -19,6 +19,8 @@ struct SettingsView: View {
                     Button("Refresh from server") {
                         Task { await env.refreshFromServer() }
                     }
+                } header: {
+                    Text("Account")
                 } footer: {
                     Text("GPS tracks upload against the selected vehicle and correlate with its datalogs.")
                 }
@@ -29,10 +31,12 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("G-force") {
+                Section {
                     NavigationLink("Calibrate phone mount") {
                         CalibrationView()
                     }
+                } header: {
+                    Text("G-force")
                 } footer: {
                     Text("Calibrate once per mounting position so lateral/longitudinal g read in the vehicle's frame.")
                 }
