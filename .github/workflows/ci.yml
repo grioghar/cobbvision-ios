@@ -11,7 +11,8 @@ concurrency:
 
 env:
   # HaishinKit 2.2.x needs the iOS 26 SDK (VideoToolbox VBR constants).
-  XCODE_VERSION: "26.0"
+  # 26.3 is the image default, so its simulator runtimes are preinstalled.
+  XCODE_VERSION: "26.3"
 
 jobs:
   test:
@@ -25,6 +26,11 @@ jobs:
         run: |
           ls -d /Applications/Xcode*.app
           sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+
+      - name: Ensure watchOS simulator runtime
+        run: |
+          xcrun simctl list runtimes
+          xcodebuild -downloadPlatform watchOS -quiet || true
 
       - name: Install XcodeGen
         run: brew install xcodegen
