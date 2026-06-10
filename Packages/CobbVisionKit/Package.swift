@@ -35,6 +35,7 @@ let package = Package(
             name: "CVStreaming",
             dependencies: [
                 "CVCore",
+                "CVCapture",
                 .product(name: "HaishinKit", package: "HaishinKit.swift", condition: .when(platforms: [.iOS])),
                 .product(name: "SRTHaishinKit", package: "HaishinKit.swift", condition: .when(platforms: [.iOS])),
             ]
@@ -47,8 +48,12 @@ let package = Package(
         .target(name: "CVWatchBridge", dependencies: ["CVCore"]),
         .testTarget(name: "CVCoreTests", dependencies: ["CVCore"]),
         .testTarget(name: "CVTelemetryTests", dependencies: ["CVTelemetry"]),
+        .testTarget(name: "CVCaptureTests", dependencies: ["CVCapture"]),
         .testTarget(name: "CVAPITests", dependencies: ["CVAPI"]),
-        .testTarget(name: "CVSessionTests", dependencies: ["CVSession"]),
+        .testTarget(
+            name: "CVSessionTests",
+            dependencies: ["CVSession", "CVCore", "CVAPI", "CVTelemetry", "CVCapture", "CVStreaming", "CVExternalCam"]
+        ),
         .testTarget(name: "CVExternalCamTests", dependencies: ["CVExternalCam"]),
     ]
 )
