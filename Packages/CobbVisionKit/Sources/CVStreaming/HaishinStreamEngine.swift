@@ -2,26 +2,30 @@
 import Foundation
 import AVFoundation
 import HaishinKit
+import RTMPHaishinKit
 import SRTHaishinKit
 import CVCore
 import CVCapture
 
-/// RTMP/SRT publishing via HaishinKit 2.x. The capture engine owns the
-/// `AVCaptureSession`; this engine only receives buffers through the
-/// `StreamTap` conformance and never attaches devices itself.
+/// RTMP/SRT publishing via HaishinKit 2.2.x's `Session` API. The capture
+/// engine owns the `AVCaptureSession`; this engine only receives buffers
+/// through the `StreamTap` conformance (`StreamConvertible.append`) and never
+/// attaches devices itself.
 ///
-/// NOTE: HaishinKit 2.x reorganized its API around actors (`RTMPConnection`,
-/// `RTMPStream`, `SRTConnection`, `SRTStream`). This file is the single place
-/// that touches it — if the pinned release shifts names, the damage stays here.
+/// This file is the single place that touches HaishinKit — if a future
+/// release shifts names again, the damage stays here.
 public final class HaishinStreamEngine: StreamEngine, StreamTap, @unchecked Sendable {
-    private enum Transport {
-        case rtmp(connection: RTMPConnection, stream: RTMPStream)
-        case srt(connection: SRTConnection, stream: SRTStream)
-    }
-
     private let lock = NSLock()
-    private var transport: Transport?
+    private var session: (any Session)?
+    private var stream: (any StreamConvertible)?
+    private var readyStateTask: Task<Void, Never>?
     private var healthContinuations: [UUID: AsyncStream<StreamHealth>.Continuation] = [:]
+
+    /// RTMP/SRT session factories register once per process.
+    private static let factoryRegistration: Task<Void, Never> = Task {
+        await SessionBuilderFactory.shared.register(RTMPSessionFactory())
+        await SessionBuilderFactory.shared.register(SRTSessionFactory())
+    }
 
     public init() {}
 
@@ -30,29 +34,39 @@ public final class HaishinStreamEngine: StreamEngine, StreamTap, @unchecked Send
     public func connect(to destination: StreamDestination, streamKey: String, quality: VideoQuality) async throws {
         await disconnect()
         emit(.connecting)
+        await Self.factoryRegistration.value
+
+        guard let url = Self.publishURL(for: destination, streamKey: streamKey) else {
+            emit(.disconnected(reason: "invalid stream URL"))
+            throw SessionError.streamConnectFailed("invalid stream URL")
+        }
 
         do {
-            switch destination.kind {
-            case .rtmp:
-                let connection = RTMPConnection()
-                let stream = RTMPStream(connection: connection)
-                try await configureVideo(stream: stream, quality: quality)
-                _ = try await connection.connect(destination.url)
-                _ = try await stream.publish(streamKey)
-                setTransport(.rtmp(connection: connection, stream: stream))
-
-            case .srt:
-                guard let url = Self.srtURL(base: destination.url, streamID: streamKey) else {
-                    throw SessionError.streamConnectFailed("invalid SRT URL")
-                }
-                let connection = SRTConnection()
-                let stream = SRTStream(connection: connection)
-                try await configureVideo(stream: stream, quality: quality)
-                try await connection.connect(url)
-                await stream.publish()
-                setTransport(.srt(connection: connection, stream: stream))
+            guard let session = try await SessionBuilderFactory.shared.make(url)
+                .setMode(.publish)
+                .build() else {
+                throw SessionError.streamConnectFailed("unsupported stream protocol")
             }
+            let stream = await session.stream
+
+            var video = await stream.videoSettings
+            video.videoSize = CGSize(width: quality.width, height: quality.height)
+            video.bitRate = Self.streamBitrate(for: quality)
+            try await stream.setVideoSettings(video)
+
+            try await session.connect { [weak self] in
+                self?.emit(.disconnected(reason: "connection lost"))
+            }
+
+            lock.withLock {
+                self.session = session
+                self.stream = stream
+            }
+            watchReadyState(of: session, bitrate: Self.streamBitrate(for: quality))
             emit(.live(bitrateBps: Self.streamBitrate(for: quality), rttMs: nil))
+        } catch let error as SessionError {
+            emit(.disconnected(reason: error.userMessage))
+            throw error
         } catch {
             emit(.disconnected(reason: error.localizedDescription))
             throw SessionError.streamConnectFailed(error.localizedDescription)
@@ -60,20 +74,16 @@ public final class HaishinStreamEngine: StreamEngine, StreamTap, @unchecked Send
     }
 
     public func disconnect() async {
-        let current = lock.withLock { () -> Transport? in
-            let t = transport
-            transport = nil
-            return t
+        let session = lock.withLock { () -> (any Session)? in
+            let s = self.session
+            self.session = nil
+            self.stream = nil
+            return s
         }
-        guard let current else { return }
-        switch current {
-        case .rtmp(let connection, let stream):
-            try? await stream.close()
-            try? await connection.close()
-        case .srt(let connection, let stream):
-            await stream.close()
-            try? await connection.close()
-        }
+        readyStateTask?.cancel()
+        readyStateTask = nil
+        guard let session else { return }
+        try? await session.close()
         emit(.disconnected(reason: nil))
     }
 
@@ -90,32 +100,34 @@ public final class HaishinStreamEngine: StreamEngine, StreamTap, @unchecked Send
     // MARK: - StreamTap (called on the capture queue — hand off fast)
 
     public func appendVideo(_ sampleBuffer: CMSampleBuffer) {
-        guard let transport = lock.withLock({ transport }) else { return }
-        switch transport {
-        case .rtmp(_, let stream):
-            Task { await stream.append(sampleBuffer) }
-        case .srt(_, let stream):
-            Task { await stream.append(sampleBuffer) }
-        }
+        guard let stream = lock.withLock({ stream }) else { return }
+        Task { await stream.append(sampleBuffer) }
     }
 
     public func appendAudio(_ sampleBuffer: CMSampleBuffer) {
-        guard let transport = lock.withLock({ transport }) else { return }
-        switch transport {
-        case .rtmp(_, let stream):
-            Task { await stream.append(sampleBuffer) }
-        case .srt(_, let stream):
-            Task { await stream.append(sampleBuffer) }
-        }
+        // StreamConvertible.append routes by the buffer's media type.
+        guard let stream = lock.withLock({ stream }) else { return }
+        Task { await stream.append(sampleBuffer) }
     }
 
     // MARK: - Internals
 
-    private func configureVideo(stream: some HKStream, quality: VideoQuality) async throws {
-        var video = await stream.videoSettings
-        video.videoSize = CGSize(width: quality.width, height: quality.height)
-        video.bitRate = Self.streamBitrate(for: quality)
-        await stream.setVideoSettings(video)
+    private func watchReadyState(of session: any Session, bitrate: Int) {
+        readyStateTask = Task { [weak self] in
+            for await state in await session.readyState {
+                guard !Task.isCancelled else { return }
+                switch state {
+                case .connecting:
+                    self?.emit(.connecting)
+                case .open:
+                    self?.emit(.live(bitrateBps: bitrate, rttMs: nil))
+                case .closing:
+                    break
+                case .closed:
+                    self?.emit(.disconnected(reason: nil))
+                }
+            }
+        }
     }
 
     /// Streaming bitrates are lower than recording bitrates — cellular uplink
@@ -129,21 +141,25 @@ public final class HaishinStreamEngine: StreamEngine, StreamTap, @unchecked Send
         }
     }
 
-    /// Joins the configured SRT base URL with the streamid (which carries
-    /// MediaMTX publish auth, e.g. `publish:cobbvision:cobb:password`).
-    static func srtURL(base: String, streamID: String) -> URL? {
-        guard var components = URLComponents(string: base) else { return nil }
-        if !streamID.isEmpty {
-            var items = components.queryItems ?? []
-            items.removeAll { $0.name == "streamid" }
-            items.append(URLQueryItem(name: "streamid", value: streamID))
-            components.queryItems = items
+    /// Builds the full publish URI HaishinKit's session factories expect:
+    /// - RTMP: `rtmp://host/app` + `/<streamKey>` as the stream name
+    /// - SRT: base URL + `streamid` query (carries MediaMTX publish auth)
+    static func publishURL(for destination: StreamDestination, streamKey: String) -> URL? {
+        switch destination.kind {
+        case .rtmp:
+            let base = destination.url.hasSuffix("/") ? String(destination.url.dropLast()) : destination.url
+            let full = streamKey.isEmpty ? base : "\(base)/\(streamKey)"
+            return URL(string: full)
+        case .srt:
+            guard var components = URLComponents(string: destination.url) else { return nil }
+            if !streamKey.isEmpty {
+                var items = components.queryItems ?? []
+                items.removeAll { $0.name == "streamid" }
+                items.append(URLQueryItem(name: "streamid", value: streamKey))
+                components.queryItems = items
+            }
+            return components.url
         }
-        return components.url
-    }
-
-    private func setTransport(_ t: Transport) {
-        lock.withLock { transport = t }
     }
 
     private func emit(_ health: StreamHealth) {

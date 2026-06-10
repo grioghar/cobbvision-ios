@@ -24,7 +24,9 @@ let package = Package(
         .library(name: "CVWatchBridge", targets: ["CVWatchBridge"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/HaishinKit/HaishinKit.swift", from: "2.0.0"),
+        // Pinned: the 2.x API surface moves between minor versions, and the
+        // engine in CVStreaming is written against exactly this release.
+        .package(url: "https://github.com/HaishinKit/HaishinKit.swift", exact: "2.2.5"),
     ],
     targets: [
         .target(name: "CVCore"),
@@ -37,6 +39,7 @@ let package = Package(
                 "CVCore",
                 "CVCapture",
                 .product(name: "HaishinKit", package: "HaishinKit.swift", condition: .when(platforms: [.iOS])),
+                .product(name: "RTMPHaishinKit", package: "HaishinKit.swift", condition: .when(platforms: [.iOS])),
                 .product(name: "SRTHaishinKit", package: "HaishinKit.swift", condition: .when(platforms: [.iOS])),
             ]
         ),
